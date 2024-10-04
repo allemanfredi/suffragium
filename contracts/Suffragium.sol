@@ -5,23 +5,22 @@ pragma solidity ^0.8.24;
 import "fhevm/lib/TFHE.sol";
 import { GatewayCaller, Gateway } from "fhevm/gateway/GatewayCaller.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ISP1Verifier } from "./interfaces/ISP1Verifier.sol";
+import { SP1DkimVerifier } from "./SP1DkimVerifier.sol";
 import { ISuffragium } from "./interfaces/ISuffragium.sol";
 
-contract Suffragium is ISuffragium, GatewayCaller, Ownable {
-    address public immutable VERIFIER;
-    bytes32 public immutable PROGRAM_V_KEY;
-    bytes32 public immutable EMAIL_PUBLIC_KEY_HASH;
+contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
     euint64 private ENC_ONE;
 
     mapping(uint256 => Vote) public votes;
     mapping(bytes32 => bool) private _voters;
     uint256 private _nextVoteId;
 
-    constructor(address verifier, bytes32 programVKey, bytes32 emailPublicKeyHash) Ownable(msg.sender) {
-        VERIFIER = verifier;
-        PROGRAM_V_KEY = programVKey;
-        EMAIL_PUBLIC_KEY_HASH = emailPublicKeyHash;
+    constructor(
+        address verifier,
+        bytes32 programVKey,
+        bytes32 emailPublicKeyHash,
+        bytes32 fromDomainHash
+    ) SP1DkimVerifier(verifier, programVKey, emailPublicKeyHash, fromDomainHash) Ownable(msg.sender) {
         ENC_ONE = TFHE.asEuint64(1);
         TFHE.allow(ENC_ONE, address(this));
     }
@@ -49,11 +48,7 @@ contract Suffragium is ISuffragium, GatewayCaller, Ownable {
         if (_voters[voterId]) revert AlreadyVoted();
         _voters[voterId] = true;
 
-        // TODO: use registrationPublicValues and registrationProofBytes
-        ISP1Verifier(VERIFIER).verifyProof(PROGRAM_V_KEY, abi.encodePacked(""), abi.encodePacked(""));
-
-        bytes32 emailPublicKeyHash = abi.decode(registrationPublicValues, (bytes32));
-        if (emailPublicKeyHash != EMAIL_PUBLIC_KEY_HASH) revert InvalidEmailPublicKeyHash();
+        verifyDkim(registrationPublicValues, registrationProofBytes);
 
         Vote storage vote = _getVote(voteId);
         if (block.number > vote.endBlock) revert VoteClosed();

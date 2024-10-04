@@ -11,6 +11,7 @@ import { mineNBlocks } from "../utils";
 const PROGRAM_VERIFICATION_KEY = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const VOTE_DURATION = 100; // blocks
 const EMAIL_PUBLIC_KEY_HASH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const FROM_DOMAIN_HASH = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 const abiCoder = new ethers.AbiCoder();
 
 describe("Suffragium", function () {
@@ -29,7 +30,12 @@ describe("Suffragium", function () {
     const SP1MockVerifier = await ethers.getContractFactory("SP1MockVerifier");
 
     verifier = await SP1MockVerifier.deploy();
-    suffragium = await Suffragium.deploy(await verifier.getAddress(), PROGRAM_VERIFICATION_KEY, EMAIL_PUBLIC_KEY_HASH);
+    suffragium = await Suffragium.deploy(
+      await verifier.getAddress(),
+      PROGRAM_VERIFICATION_KEY,
+      EMAIL_PUBLIC_KEY_HASH,
+      FROM_DOMAIN_HASH,
+    );
     instances = await createInstances(signers);
   });
 
@@ -40,7 +46,10 @@ describe("Suffragium", function () {
 
     const input = instances.alice.createEncryptedInput(await suffragium.getAddress(), signers.alice.address);
     const encryptedInput = input.add64(1).encrypt();
-    const publicValues = abiCoder.encode(["bytes32"], [EMAIL_PUBLIC_KEY_HASH]);
+    const publicValues = abiCoder.encode(
+      ["bytes32", "bytes32", "bool"],
+      [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, true],
+    );
     await expect(suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, "0x"))
       .to.emit(suffragium, "VoteCasted")
       .withArgs(voteId);
@@ -53,7 +62,10 @@ describe("Suffragium", function () {
 
     const input = instances.alice.createEncryptedInput(await suffragium.getAddress(), signers.alice.address);
     const encryptedInput = input.add64(1).encrypt();
-    const publicValues = abiCoder.encode(["bytes32"], [EMAIL_PUBLIC_KEY_HASH]);
+    const publicValues = abiCoder.encode(
+      ["bytes32", "bytes32", "bool"],
+      [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, true],
+    );
     await suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, "0x");
     await expect(
       suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, "0x"),
@@ -68,7 +80,10 @@ describe("Suffragium", function () {
     for (const [index, instance] of Object.values(instances).entries()) {
       const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
       const encryptedInput = input.add64(!Boolean(index % 2) ? 1 : 0).encrypt();
-      const publicValues = abiCoder.encode(["bytes32"], [EMAIL_PUBLIC_KEY_HASH]);
+      const publicValues = abiCoder.encode(
+        ["bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, true],
+      );
       await expect(
         suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),
       )
@@ -91,7 +106,10 @@ describe("Suffragium", function () {
     for (const [index, instance] of Object.values(instances).entries()) {
       const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
       const encryptedInput = input.add64(Boolean(index % 2) ? 1 : 0).encrypt();
-      const publicValues = abiCoder.encode(["bytes32"], [EMAIL_PUBLIC_KEY_HASH]);
+      const publicValues = abiCoder.encode(
+        ["bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, true],
+      );
       await expect(
         suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),
       )
