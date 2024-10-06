@@ -9,7 +9,7 @@ import { SP1DkimVerifier } from "./SP1DkimVerifier.sol";
 import { ISuffragium } from "./interfaces/ISuffragium.sol";
 
 contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
-    euint64 private ENC_ONE;
+    euint64 private immutable ENC_ONE;
 
     mapping(uint256 => Vote) public votes;
     mapping(bytes32 => bool) private _voters;
