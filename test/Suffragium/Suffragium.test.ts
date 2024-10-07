@@ -13,6 +13,7 @@ const VOTE_DURATION = 100; // blocks
 const EMAIL_PUBLIC_KEY_HASH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const FROM_DOMAIN_HASH = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 const abiCoder = new ethers.AbiCoder();
+const MIN_QUORUM = "500000000000000000"; // 0.5 -> 50%
 
 describe("Suffragium", function () {
   let signers: Signers;
@@ -35,6 +36,7 @@ describe("Suffragium", function () {
       PROGRAM_VERIFICATION_KEY,
       EMAIL_PUBLIC_KEY_HASH,
       FROM_DOMAIN_HASH,
+      MIN_QUORUM,
     );
     instances = await createInstances(signers);
   });
@@ -72,14 +74,42 @@ describe("Suffragium", function () {
     ).to.be.revertedWithCustomError(suffragium, "AlreadyVoted");
   });
 
-  it("should be able to cast more votes and reveal the result when the quorum is reached", async () => {
+  it("should be able to cast more votes and reveal the result when the quorum (80%) is reached", async () => {
     const voteId = 0;
     const endBlock = (await ethers.provider.getBlockNumber()) + VOTE_DURATION;
     await expect(suffragium.createVote(endBlock, "description")).to.emit(suffragium, "VoteCreated").withArgs(voteId);
+    await suffragium.setMinQuorum("800000000000000000"); // 80%
 
     for (const [index, instance] of Object.values(instances).entries()) {
       const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
-      const encryptedInput = input.add64(!Boolean(index % 2) ? 1 : 0).encrypt();
+      const encryptedInput = input.add64(index === 0 ? 0 : 1).encrypt();
+      const publicValues = abiCoder.encode(
+        ["bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, true],
+      );
+      await expect(
+        suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),
+      )
+        .to.emit(suffragium, "VoteCasted")
+        .withArgs(voteId);
+    }
+
+    await mineNBlocks(VOTE_DURATION);
+    await expect(suffragium.requestRevealVote(voteId)).to.emit(suffragium, "VoteRevealRequested").withArgs(voteId);
+    await awaitAllDecryptionResults();
+
+    expect(await suffragium.isVotePassed(voteId)).to.be.eq(true);
+  });
+
+  it("should be able to cast more votes and reveal the result when the quorum (100%) is reached", async () => {
+    const voteId = 0;
+    const endBlock = (await ethers.provider.getBlockNumber()) + VOTE_DURATION;
+    await expect(suffragium.createVote(endBlock, "description")).to.emit(suffragium, "VoteCreated").withArgs(voteId);
+    await suffragium.setMinQuorum("1000000000000000000"); // 100%
+
+    for (const [index, instance] of Object.values(instances).entries()) {
+      const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
+      const encryptedInput = input.add64(1).encrypt();
       const publicValues = abiCoder.encode(
         ["bytes32", "bytes32", "bool"],
         [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, true],

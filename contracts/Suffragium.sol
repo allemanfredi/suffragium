@@ -14,15 +14,18 @@ contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
     mapping(uint256 => Vote) public votes;
     mapping(bytes32 => bool) private _voters;
     uint256 private _nextVoteId;
+    uint256 public minQuorum;
 
     constructor(
         address verifier,
         bytes32 programVKey,
         bytes32 emailPublicKeyHash,
-        bytes32 fromDomainHash
+        bytes32 fromDomainHash,
+        uint256 initialMinQuorum
     ) SP1DkimVerifier(verifier, programVKey, emailPublicKeyHash, fromDomainHash) Ownable(msg.sender) {
         ENC_ONE = TFHE.asEuint64(1);
         TFHE.allow(ENC_ONE, address(this));
+        minQuorum = initialMinQuorum;
     }
 
     /// @inheritdoc ISuffragium
@@ -77,8 +80,7 @@ contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
     function isVotePassed(uint256 voteId) external view returns (bool) {
         Vote storage vote = _getVote(voteId);
         if (vote.state != VoteState.Revealed) return false;
-        // TODO: add custom quorum
-        return vote.result > (vote.validVotes / 2);
+        return (vote.result * 10 ** 18) / vote.validVotes >= minQuorum;
     }
 
     /// @inheritdoc ISuffragium
@@ -107,6 +109,12 @@ contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
         vote.validVotes = validVotes;
 
         emit VoteRevealed(voteId);
+    }
+
+    /// @inheritdoc ISuffragium
+    function setMinQuorum(uint256 newMinQuorum) external onlyOwner {
+        minQuorum = newMinQuorum;
+        emit MinQuorumSet(newMinQuorum);
     }
 
     function _getVote(uint256 voteId) internal view returns (Vote storage) {
