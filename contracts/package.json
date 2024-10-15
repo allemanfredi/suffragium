@@ -1,13 +1,9 @@
 {
-  "name": "@zama-ai/fhevm-hardhat-template",
-  "description": "fhEVM hardhat template",
+  "name": "@suffragium/contracts",
+  "description": "Suffragium contracts",
   "version": "1.0.0",
   "engines": {
     "node": ">=20.0.0"
-  },
-  "author": {
-    "name": "zama-ai",
-    "url": "https://github.com/zama-ai"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
