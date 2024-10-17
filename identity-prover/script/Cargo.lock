@@ -4953,7 +4953,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "registration-prover-script"
+name = "identity-prover-script"
 version = "0.1.0"
 dependencies = [
  "cfdkim",

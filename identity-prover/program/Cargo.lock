@@ -897,7 +897,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "registration-prover-program"
+name = "identity-prover-program"
 version = "0.1.0"
 dependencies = [
  "cfdkim",
