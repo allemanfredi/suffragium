@@ -11,7 +11,6 @@ import { mineNBlocks } from "../utils";
 const PROGRAM_VERIFICATION_KEY = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const VOTE_DURATION = 100; // blocks
 const EMAIL_PUBLIC_KEY_HASH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-const IDENTITY_PUBLIC_KEY_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const FROM_DOMAIN_HASH = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 const abiCoder = new ethers.AbiCoder();
 const MIN_QUORUM = "500000000000000000"; // 0.5 -> 50%
@@ -51,8 +50,8 @@ describe("Suffragium", function () {
     const input = instances.alice.createEncryptedInput(await suffragium.getAddress(), signers.alice.address);
     const encryptedInput = input.add64(1).encrypt();
     const publicValues = abiCoder.encode(
-      ["bytes32", "bytes32", "bytes32", "bytes32", "bool"],
-      [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, IDENTITY_PUBLIC_KEY_HASH, voterId, true],
+      ["bytes32", "bytes32", "bytes32", "bool"],
+      [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
     );
     await expect(suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, "0x"))
       .to.emit(suffragium, "VoteCasted")
@@ -68,8 +67,8 @@ describe("Suffragium", function () {
     const input = instances.alice.createEncryptedInput(await suffragium.getAddress(), signers.alice.address);
     const encryptedInput = input.add64(1).encrypt();
     const publicValues = abiCoder.encode(
-      ["bytes32", "bytes32", "bytes32", "bytes32", "bool"],
-      [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, IDENTITY_PUBLIC_KEY_HASH, voterId, true],
+      ["bytes32", "bytes32", "bytes32", "bool"],
+      [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
     );
     await suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, "0x");
     await expect(
@@ -88,8 +87,8 @@ describe("Suffragium", function () {
       const encryptedInput = input.add64(index === 0 ? 0 : 1).encrypt();
       const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
       const publicValues = abiCoder.encode(
-        ["bytes32", "bytes32", "bytes32", "bytes32", "bool"],
-        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, IDENTITY_PUBLIC_KEY_HASH, voterId, true],
+        ["bytes32", "bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
       );
       await expect(
         suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),
@@ -116,8 +115,8 @@ describe("Suffragium", function () {
       const encryptedInput = input.add64(1).encrypt();
       const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
       const publicValues = abiCoder.encode(
-        ["bytes32", "bytes32", "bytes32", "bytes32", "bool"],
-        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, IDENTITY_PUBLIC_KEY_HASH, voterId, true],
+        ["bytes32", "bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
       );
       await expect(
         suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),
@@ -143,8 +142,8 @@ describe("Suffragium", function () {
       const encryptedInput = input.add64(Boolean(index % 2) ? 1 : 0).encrypt();
       const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
       const publicValues = abiCoder.encode(
-        ["bytes32", "bytes32", "bytes32", "bytes32", "bool"],
-        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, IDENTITY_PUBLIC_KEY_HASH, voterId, true],
+        ["bytes32", "bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
       );
       await expect(
         suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),

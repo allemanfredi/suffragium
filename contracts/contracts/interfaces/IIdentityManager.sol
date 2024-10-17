@@ -9,7 +9,6 @@ interface IIdentityManager {
     error DkimSignatureVerificationFailed();
     error InvalidEmailPublicKeyHash();
     error InvalidFromDomainHash();
-    error InvalidVoterIdPublicKeyHash();
 
     function verifyProofAndGetVoterId(
         bytes calldata identityPublicValues,
