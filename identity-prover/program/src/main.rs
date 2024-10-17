@@ -1,7 +1,7 @@
 #![no_main]
 
 use cfdkim::{verify_email_with_public_key, DkimPublicKey};
-use mailparse::parse_mail;
+use mailparse::{parse_mail, MailHeaderMap};
 use sha2::{Digest, Sha256};
 use sp1_zkvm::io::{commit, commit_slice, read, read_vec};
 
@@ -24,8 +24,14 @@ pub fn main() {
     hasher.update(from_domain.as_bytes());
     let from_domain_hash = hasher.finalize();
 
+    let to = email.headers.get_first_value("To").unwrap();
+    let mut hasher = Sha256::new();
+    hasher.update(to.as_bytes());
+    let voter_id = hasher.finalize();
+
     commit_slice(&from_domain_hash);
     commit_slice(&public_key_hash);
+    commit_slice(&voter_id);
 
     let result = verify_email_with_public_key(&from_domain, &email, &public_key).unwrap();
     if let Some(_) = &result.error() {

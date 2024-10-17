@@ -449,6 +449,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "identity-prover-program"
+version = "0.1.0"
+dependencies = [
+ "cfdkim",
+ "mailparse",
+ "sha2",
+ "sp1-zkvm",
+]
+
+[[package]]
 name = "impl-trait-for-tuples"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -894,16 +904,6 @@ checksum = "460a9ed63cdf03c1b9847e8a12a5f5ba19c4efd5869e4a737e05be25d7c427e5"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
-]
-
-[[package]]
-name = "identity-prover-program"
-version = "0.1.0"
-dependencies = [
- "cfdkim",
- "mailparse",
- "sha2",
- "sp1-zkvm",
 ]
 
 [[package]]

@@ -54,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // println!("result: {:?}", proof.public_values.read_slice());
         // println!("result: {:?}", proof.public_values.read_slice());
+        // println!("result: {:?}", proof.public_values.read_slice());
         // println!("result: {:?}", proof.public_values.read::<bool>());
 
         client.verify(&proof, &vk).expect("verification failed");
