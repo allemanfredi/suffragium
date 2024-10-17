@@ -5,14 +5,14 @@ pragma solidity ^0.8.24;
 import "fhevm/lib/TFHE.sol";
 import { GatewayCaller, Gateway } from "fhevm/gateway/GatewayCaller.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { SP1DkimVerifier } from "./SP1DkimVerifier.sol";
+import { IdentityManager } from "./IdentityManager.sol";
 import { ISuffragium } from "./interfaces/ISuffragium.sol";
 
-contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
+contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     euint64 private immutable ENC_ONE;
 
     mapping(uint256 => Vote) public votes;
-    mapping(bytes32 => bool) private _voters;
+    mapping(bytes32 => mapping(uint256 => bool)) private _voters;
     uint256 private _nextVoteId;
     uint256 public minQuorum;
 
@@ -22,7 +22,7 @@ contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
         bytes32 emailPublicKeyHash,
         bytes32 fromDomainHash,
         uint256 initialMinQuorum
-    ) SP1DkimVerifier(verifier, programVKey, emailPublicKeyHash, fromDomainHash) Ownable(msg.sender) {
+    ) IdentityManager(verifier, programVKey, emailPublicKeyHash, fromDomainHash) Ownable(msg.sender) {
         ENC_ONE = TFHE.asEuint64(1);
         TFHE.allow(ENC_ONE, address(this));
         minQuorum = initialMinQuorum;
@@ -43,15 +43,13 @@ contract Suffragium is ISuffragium, SP1DkimVerifier, GatewayCaller, Ownable {
         uint256 voteId,
         einput encryptedSupport,
         bytes calldata supportProof,
-        bytes calldata registrationPublicValues,
-        bytes calldata registrationProofBytes
+        bytes calldata identityPublicValues,
+        bytes calldata identityProofBytes
     ) external {
         // NOTE: If an attacker gains access to the email, they can generate a proof and submit it on-chain with a support value greater than 1, resulting in censorship of the legitimate voter.
-        bytes32 voterId = keccak256(abi.encodePacked(registrationPublicValues, registrationProofBytes));
-        if (_voters[voterId]) revert AlreadyVoted();
-        _voters[voterId] = true;
-
-        verifyDkim(registrationPublicValues, registrationProofBytes);
+        bytes32 voterId = verifyProofAndGetVoterId(identityPublicValues, identityProofBytes);
+        if (_voters[voterId][voteId]) revert AlreadyVoted();
+        _voters[voterId][voteId] = true;
 
         Vote storage vote = _getVote(voteId);
         if (block.number > vote.endBlock) revert VoteClosed();

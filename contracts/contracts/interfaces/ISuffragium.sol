@@ -3,12 +3,12 @@
 pragma solidity ^0.8.24;
 
 import "fhevm/lib/TFHE.sol";
-import { ISP1DkimVerifier } from "./ISP1DkimVerifier.sol";
+import { IIdentityManager } from "./IIdentityManager.sol";
 
 /// @title Suffragium Interface
 /// @author Alessadro Manfredi
 /// @notice This contract is the interface for the Suffragium voting system.
-interface ISuffragium is ISP1DkimVerifier {
+interface ISuffragium is IIdentityManager {
     enum VoteState {
         NotCreated,
         Created,
@@ -43,8 +43,8 @@ interface ISuffragium is ISP1DkimVerifier {
         uint256 voteId,
         einput encryptedSupport,
         bytes calldata supportProof,
-        bytes calldata registrationPublicValues,
-        bytes calldata registrationProofBytes
+        bytes calldata identityPublicValues,
+        bytes calldata identityProofBytes
     ) external;
 
     function getVote(uint256 voteId) external view returns (Vote memory);
