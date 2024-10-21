@@ -12,7 +12,7 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     euint64 private immutable ENC_ONE;
 
     mapping(uint256 => Vote) public votes;
-    mapping(bytes32 => mapping(uint256 => bool)) private _voters;
+    mapping(uint256 => mapping(bytes32 => bool)) private _castedVotes;
     uint256 private _nextVoteId;
     uint256 public minQuorum;
 
@@ -48,8 +48,8 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     ) external {
         // NOTE: If an attacker gains access to the email, they can generate a proof and submit it on-chain with a support value greater than 1, resulting in censorship of the legitimate voter.
         bytes32 voterId = verifyProofAndGetVoterId(identityPublicValues, identityProofBytes);
-        if (_voters[voterId][voteId]) revert AlreadyVoted();
-        _voters[voterId][voteId] = true;
+        if (_castedVotes[voteId][voterId]) revert AlreadyVoted();
+        _castedVotes[voteId][voterId] = true;
 
         Vote storage vote = _getVote(voteId);
         if (block.number > vote.endBlock) revert VoteClosed();
@@ -72,6 +72,11 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     /// @inheritdoc ISuffragium
     function getVote(uint256 voteId) external view returns (Vote memory) {
         return _getVote(voteId);
+    }
+
+    /// @inheritdoc ISuffragium
+    function hasVoted(uint256 voteId, bytes32 voterId) external view returns (bool) {
+        return _castedVotes[voteId][voterId];
     }
 
     /// @inheritdoc ISuffragium

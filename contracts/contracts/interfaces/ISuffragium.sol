@@ -49,6 +49,8 @@ interface ISuffragium is IIdentityManager {
 
     function getVote(uint256 voteId) external view returns (Vote memory);
 
+    function hasVoted(uint256 voteId, bytes32 voterId) external view returns (bool);
+
     function isVotePassed(uint256 voteId) external view returns (bool);
 
     function requestRevealVote(uint256 voteId) external;
