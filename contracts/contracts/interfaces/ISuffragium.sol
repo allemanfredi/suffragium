@@ -20,9 +20,8 @@ interface ISuffragium is IIdentityManager {
         uint256 endBlock;
         uint256 minQuorum;
         euint64 encryptedResult;
-        euint64 encryptedValidVotes;
         uint256 result;
-        uint256 validVotes;
+        uint256 voteCount;
         string description;
         VoteState state;
     }
@@ -56,5 +55,5 @@ interface ISuffragium is IIdentityManager {
 
     function requestRevealVote(uint256 voteId) external;
 
-    function revealVote(uint256 requestId, uint256 encryptedResult, uint256 encryptedValidVotes) external;
+    function revealVote(uint256 requestId, uint256 encryptedResult) external;
 }

@@ -56,7 +56,7 @@ describe("Suffragium", function () {
 
     // Create and submit an encrypted vote
     const input = instances.alice.createEncryptedInput(await suffragium.getAddress(), signers.alice.address);
-    const encryptedInput = input.add64(1).encrypt();
+    const encryptedInput = input.addBool(1).encrypt();
     const publicValues = abiCoder.encode(
       ["bytes32", "bytes32", "bytes32", "bool"],
       [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
@@ -77,7 +77,7 @@ describe("Suffragium", function () {
 
     // Create and submit first vote
     const input = instances.alice.createEncryptedInput(await suffragium.getAddress(), signers.alice.address);
-    const encryptedInput = input.add64(1).encrypt();
+    const encryptedInput = input.addBool(1).encrypt();
     const publicValues = abiCoder.encode(
       ["bytes32", "bytes32", "bytes32", "bool"],
       [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
@@ -101,7 +101,7 @@ describe("Suffragium", function () {
     // Cast votes from multiple instances
     for (const [index, instance] of Object.values(instances).entries()) {
       const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
-      const encryptedInput = input.add64(index === 0 ? 0 : 1).encrypt();
+      const encryptedInput = input.addBool(index === 0 ? 0 : 1).encrypt();
       const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
       const publicValues = abiCoder.encode(
         ["bytes32", "bytes32", "bytes32", "bool"],
@@ -133,7 +133,7 @@ describe("Suffragium", function () {
     // Cast unanimous yes votes
     for (const [index, instance] of Object.values(instances).entries()) {
       const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
-      const encryptedInput = input.add64(1).encrypt();
+      const encryptedInput = input.addBool(1).encrypt();
       const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
       const publicValues = abiCoder.encode(
         ["bytes32", "bytes32", "bytes32", "bool"],
@@ -154,6 +154,38 @@ describe("Suffragium", function () {
     expect(await suffragium.isVotePassed(voteId)).to.be.eq(true);
   });
 
+  // Test vote failing with all "no" votes
+  it("should fail when all votes are false", async () => {
+    const voteId = 0;
+    const endBlock = (await ethers.provider.getBlockNumber()) + VOTE_DURATION;
+    await expect(suffragium.createVote(endBlock, MIN_QUORUM, "description"))
+      .to.emit(suffragium, "VoteCreated")
+      .withArgs(voteId);
+
+    // Cast all "no" votes
+    for (const [index, instance] of Object.values(instances).entries()) {
+      const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
+      const encryptedInput = input.addBool(0).encrypt(); // All votes are false/no
+      const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
+      const publicValues = abiCoder.encode(
+        ["bytes32", "bytes32", "bytes32", "bool"],
+        [FROM_DOMAIN_HASH, EMAIL_PUBLIC_KEY_HASH, voterId, true],
+      );
+      await expect(
+        suffragium.castVote(voteId, encryptedInput.handles[0], encryptedInput.inputProof, publicValues, `0x0${index}`),
+      )
+        .to.emit(suffragium, "VoteCasted")
+        .withArgs(voteId);
+    }
+
+    // Reveal and verify vote results
+    await mineNBlocks(VOTE_DURATION);
+    await expect(suffragium.requestRevealVote(voteId)).to.emit(suffragium, "VoteRevealRequested").withArgs(voteId);
+    await awaitAllDecryptionResults();
+
+    expect(await suffragium.isVotePassed(voteId)).to.be.eq(false);
+  });
+
   // Test vote failing when quorum is not reached
   it("should be able to cast more votes and reveal the result when the quorum is not reached", async () => {
     const voteId = 0;
@@ -165,7 +197,7 @@ describe("Suffragium", function () {
     // Cast alternating yes/no votes
     for (const [index, instance] of Object.values(instances).entries()) {
       const input = instance.createEncryptedInput(await suffragium.getAddress(), Object.values(signers)[index].address);
-      const encryptedInput = input.add64(Boolean(index % 2) ? 1 : 0).encrypt();
+      const encryptedInput = input.addBool(index % 2 ? 1 : 0).encrypt();
       const voterId = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" + index.toString(16);
       const publicValues = abiCoder.encode(
         ["bytes32", "bytes32", "bytes32", "bool"],

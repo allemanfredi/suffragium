@@ -14,9 +14,6 @@ import { ISuffragium } from "./interfaces/ISuffragium.sol";
  * while maintaining vote integrity and preventing manipulation.
  */
 contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
-    // Encrypted value representing 1, used for vote counting
-    euint64 internal ENC_ONE;
-
     // Mapping of vote IDs to Vote structs containing vote details
     mapping(uint256 => Vote) public votes;
     // Double mapping tracking which voters have cast votes for each vote ID
@@ -36,26 +33,13 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         bytes32 programVKey,
         bytes32 emailPublicKeyHash,
         bytes32 fromDomainHash
-    ) IdentityManager(verifier, programVKey, emailPublicKeyHash, fromDomainHash) Ownable(msg.sender) {
-        ENC_ONE = TFHE.asEuint64(1);
-        TFHE.allow(ENC_ONE, address(this));
-    }
+    ) IdentityManager(verifier, programVKey, emailPublicKeyHash, fromDomainHash) Ownable(msg.sender) {}
 
     /// @inheritdoc ISuffragium
     function createVote(uint256 endBlock, uint256 minQuorum, string calldata description) external onlyOwner {
         uint256 voteId = numberOfVotes;
-        votes[voteId] = Vote(
-            endBlock,
-            minQuorum,
-            TFHE.asEuint64(0),
-            TFHE.asEuint64(0),
-            0,
-            0,
-            description,
-            VoteState.Created
-        );
+        votes[voteId] = Vote(endBlock, minQuorum, TFHE.asEuint64(0), 0, 0, description, VoteState.Created);
         TFHE.allow(votes[voteId].encryptedResult, address(this));
-        TFHE.allow(votes[voteId].encryptedValidVotes, address(this));
         numberOfVotes++;
         emit VoteCreated(voteId);
     }
@@ -77,18 +61,14 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         if (block.number > vote.endBlock) revert VoteClosed();
 
         // Convert and validate the encrypted vote
-        euint64 support = TFHE.asEuint64(encryptedSupport, supportProof);
-        TFHE.allowTransient(support, address(this));
-        ebool isValid = TFHE.le(support, ENC_ONE);
-        TFHE.allowTransient(isValid, address(this));
+        ebool support = TFHE.asEbool(encryptedSupport, supportProof);
+
+        // Increment the vote count for this specific vote
+        vote.voteCount++;
 
         // Update vote tallies if vote is valid
-        euint64 encryptedResult = vote.encryptedResult;
-        euint64 encryptedValidVotes = vote.encryptedValidVotes;
-        vote.encryptedResult = TFHE.select(isValid, TFHE.add(support, encryptedResult), encryptedResult);
-        vote.encryptedValidVotes = TFHE.select(isValid, TFHE.add(encryptedValidVotes, ENC_ONE), encryptedValidVotes);
+        vote.encryptedResult = TFHE.add(vote.encryptedResult, TFHE.asEuint64(support));
         TFHE.allow(vote.encryptedResult, address(this));
-        TFHE.allow(vote.encryptedValidVotes, address(this));
 
         emit VoteCasted(voteId);
     }
@@ -103,12 +83,15 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         return _castedVotes[voteId][voterId];
     }
 
+
     /// @inheritdoc ISuffragium
     function isVotePassed(uint256 voteId) external view returns (bool) {
         Vote storage vote = _getVote(voteId);
         if (vote.state != VoteState.Revealed) return false;
-        return (vote.result * 10 ** 18) / vote.validVotes >= vote.minQuorum;
+        if (vote.result == 0) return false;
+        return (vote.result * 10 ** 18) / vote.voteCount >= vote.minQuorum;
     }
+
 
     /// @inheritdoc ISuffragium
     function requestRevealVote(uint256 voteId) external {
@@ -116,9 +99,8 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         if (block.number <= vote.endBlock) revert VoteNotClosed();
 
         // Request decryption of vote results through the Gateway
-        uint256[] memory cts = new uint256[](2);
+        uint256[] memory cts = new uint256[](1);
         cts[0] = Gateway.toUint256(vote.encryptedResult);
-        cts[1] = Gateway.toUint256(vote.encryptedValidVotes);
         uint256 requestId = Gateway.requestDecryption(cts, this.revealVote.selector, 0, block.timestamp + 100, false);
         addParamsUint256(requestId, voteId);
         vote.state = VoteState.RequestedToReveal;
@@ -127,7 +109,7 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     }
 
     /// @inheritdoc ISuffragium
-    function revealVote(uint256 requestId, uint256 result, uint256 validVotes) external onlyGateway {
+    function revealVote(uint256 requestId, uint256 result) external onlyGateway {
         uint256[] memory params = getParamsUint256(requestId);
         uint256 voteId = params[0];
 
@@ -135,7 +117,6 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         Vote storage vote = _getVote(voteId);
         vote.state = VoteState.Revealed;
         vote.result = result;
-        vote.validVotes = validVotes;
 
         emit VoteRevealed(voteId);
     }
