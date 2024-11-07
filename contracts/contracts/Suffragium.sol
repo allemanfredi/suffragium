@@ -15,7 +15,7 @@ import { ISuffragium } from "./interfaces/ISuffragium.sol";
  */
 contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     // Mapping of vote IDs to Vote structs containing vote details
-    mapping(uint256 => Vote) public votes;
+    mapping(uint256 => Vote) private _votes;
     // Double mapping tracking which voters have cast votes for each vote ID
     mapping(uint256 => mapping(bytes32 => bool)) private _castedVotes;
     // Counter for generating unique vote IDs
@@ -38,8 +38,8 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
     /// @inheritdoc ISuffragium
     function createVote(uint256 endBlock, uint256 minQuorum, string calldata description) external onlyOwner {
         uint256 voteId = numberOfVotes;
-        votes[voteId] = Vote(endBlock, minQuorum, TFHE.asEuint64(0), 0, 0, description, VoteState.Created);
-        TFHE.allow(votes[voteId].encryptedResult, address(this));
+        _votes[voteId] = Vote(endBlock, minQuorum, TFHE.asEuint64(0), 0, 0, description, VoteState.Created);
+        TFHE.allow(_votes[voteId].encryptedResult, address(this));
         numberOfVotes++;
         emit VoteCreated(voteId);
     }
@@ -83,7 +83,6 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         return _castedVotes[voteId][voterId];
     }
 
-
     /// @inheritdoc ISuffragium
     function isVotePassed(uint256 voteId) external view returns (bool) {
         Vote storage vote = _getVote(voteId);
@@ -91,7 +90,6 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
         if (vote.result == 0) return false;
         return (vote.result * 10 ** 18) / vote.voteCount >= vote.minQuorum;
     }
-
 
     /// @inheritdoc ISuffragium
     function requestRevealVote(uint256 voteId) external {
@@ -127,7 +125,7 @@ contract Suffragium is ISuffragium, IdentityManager, GatewayCaller, Ownable {
      * @return Vote storage pointer to the vote data
      */
     function _getVote(uint256 voteId) internal view returns (Vote storage) {
-        Vote storage vote = votes[voteId];
+        Vote storage vote = _votes[voteId];
         if (vote.endBlock == 0) revert VoteDoesNotExist();
         return vote;
     }
