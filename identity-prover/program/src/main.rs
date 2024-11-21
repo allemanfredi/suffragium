@@ -1,6 +1,5 @@
 #![no_main]
 
-// Import required dependencies
 use cfdkim::{verify_email_with_public_key, DkimPublicKey};
 use mailparse::{parse_mail, MailHeaderMap};
 use sha2::{Digest, Sha256};

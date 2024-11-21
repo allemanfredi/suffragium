@@ -1,4 +1,3 @@
-// Import required crates and modules
 use cfdkim::{dns, header::HEADER, public_key::retrieve_public_key, validate_header};
 use mailparse::MailHeaderMap;
 use sp1_sdk::{ProverClient, SP1Stdin};
